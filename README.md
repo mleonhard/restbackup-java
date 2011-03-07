@@ -3,7 +3,7 @@ RestBackup(tm) Client Library
 
 This package provides convenient classes for making calls to the
 RestBackup(tm) Backup and Management APIs.  These APIs are documented at
-[http://dev.restbackup.com/developers](http://dev.restbackup.com/developers).
+[http://www.restbackup.com/developers](http://www.restbackup.com/developers).
 
 Dependencies:
 
