@@ -49,4 +49,23 @@ public class BackupAccount {
 	public int getRetainUploadsDays() {
 		return _retainUploadsDays;
 	}
+
+	/**
+	 * Returns a string representation of the object, such as
+	 * "BackupAccountDetails(accountId="/72d2e-
+	 * 1dc1-daf2d1785",description="License 42a745b7",retainUploadsDays=180)"
+	 */
+	public String toString() {
+		return String.format(
+				"BackupAccountDetails(accountId=\"%s\",description=\"%s\",retainUploadsDays=%d)",
+				_accountId, _description, _retainUploadsDays);
+	}
+
+	public boolean equals(Object obj) {
+		return obj != null && obj.toString().equals(toString());
+	}
+
+	public int hashCode() {
+		return toString().hashCode();
+	}
 }

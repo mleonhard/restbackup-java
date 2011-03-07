@@ -57,16 +57,6 @@ public class BackupApiCaller extends HttpCaller {
 	}
 
 	/**
-	 * Creates a new object for calling the RestBackup(tm) Management API
-	 * 
-	 * @param accountDetails
-	 *            an object containing a valid backup account access-URL
-	 */
-	public BackupApiCaller(BackupAccountDetails accountDetails) {
-		super(accountDetails.getAccessUrl());
-	}
-
-	/**
 	 * Uploads the provided data to the backup account, storing it at the
 	 * specified uri
 	 * 
@@ -75,15 +65,26 @@ public class BackupApiCaller extends HttpCaller {
 	 * @param entity
 	 *            the data to upload
 	 * @return a response object
+	 * @throws ResourceExistsException
+	 *             if a file already exists at that uri
+	 * @throws UnauthorizedException
+	 *             if the access-URL is not accepted
 	 * @throws RestBackupException
-	 *             on error
+	 *             on all other errors
 	 * @see org.apache.http.entity.ByteArrayEntity
 	 * @see org.apache.http.entity.FileEntity
 	 * @see org.apache.http.entity.InputStreamEntity
 	 * @see org.apache.http.entity.StringEntity
 	 */
-	public HttpResponse put(String uri, HttpEntity entity) throws RestBackupException {
-		return doPut(uri, entity);
+	public String put(String uri, HttpEntity entity) throws ResourceExistsException,
+			UnauthorizedException, RestBackupException {
+		HttpResponse response = doPut(uri, entity);
+		// Method Not Allowed
+		if (response.getStatusLine().getStatusCode() == 405) {
+			throw new ResourceExistsException(response);
+		}
+		expectStatusCode(response, 201); // Created
+		return HttpCaller.readEntity(response);
 	}
 
 	/**
@@ -92,40 +93,32 @@ public class BackupApiCaller extends HttpCaller {
 	 * @param uri
 	 *            the location of the file to download, such as
 	 *            "/previously-uploaded-file"
-	 * @return a response object
+	 * @return an entity object with the file data
 	 * @throws IllegalArgumentException
 	 *             when the uri is malformed
+	 * @throws ResourceNotFoundException
+	 *             if there is no resource at the specified uri
+	 * @throws UnauthorizedException
+	 *             if the access-URL is not accepted
 	 * @throws RestBackupException
-	 *             on error downloading the file
+	 *             on all other errors
 	 * @see org.apache.http.HttpEntity#getContent()
 	 * @see org.apache.http.HttpEntity#getContentLength()
 	 * @see org.apache.http.util.EntityUtils#toString(HttpEntity)
 	 * @see org.apache.http.util.EntityUtils#toString(HttpEntity, String)
 	 * @see org.apache.http.util.EntityUtils#toByteArray(HttpEntity)
 	 */
-	public HttpResponse get(String uri) throws RestBackupException, IllegalArgumentException {
-		return doGet(uri, null);
-	}
-
-	/**
-	 * Retrieves the specified file
-	 * 
-	 * @param fileDetails
-	 *            object with details of the file to download
-	 * @return a response object
-	 * @throws IllegalArgumentException
-	 *             if the file's uri is malformed
-	 * @throws RestBackupException
-	 *             on error downloading the file
-	 * @see org.apache.http.HttpEntity#getContent()
-	 * @see org.apache.http.HttpEntity#getContentLength()
-	 * @see org.apache.http.util.EntityUtils#toString(HttpEntity)
-	 * @see org.apache.http.util.EntityUtils#toString(HttpEntity, String)
-	 * @see org.apache.http.util.EntityUtils#toByteArray(HttpEntity)
-	 */
-	public HttpResponse get(FileDetails fileDetails) throws RestBackupException,
-			IllegalArgumentException {
-		return get(fileDetails.getUri());
+	public HttpEntity get(String uri) throws IllegalArgumentException, ResourceNotFoundException,
+			UnauthorizedException, RestBackupException {
+		HttpResponse response = doGet(uri, null);
+		if (response.getStatusLine().getStatusCode() == 404) { // Not Found
+			throw new ResourceNotFoundException(response);
+		}
+		expectStatusCode(response, 200); // Ok
+		if (response.getEntity() == null) {
+			throw new RestBackupException("Response contains no body", response);
+		}
+		return response.getEntity();
 	}
 
 	/**
@@ -145,13 +138,19 @@ public class BackupApiCaller extends HttpCaller {
 	 * Downloads the list of files currently stored in the backup account
 	 * 
 	 * @return a collection of objects with details about the files
+	 * @throws UnauthorizedException
+	 *             if the access-URL is not accepted
 	 * @throws RestBackupException
-	 *             on error
+	 *             on all other errors
 	 */
-	public Collection<FileDetails> list() throws RestBackupException {
+	public Collection<FileDetails> list() throws UnauthorizedException, RestBackupException {
 		// TODO: return an iterator and stream the list
+		HttpResponse response = doGet("/", new BasicHeader("Accept", "application/json"));
+		expectStatusCode(response, 200); // Ok
+		if (response.getEntity() == null) {
+			throw new RestBackupException("Response contains no body", response);
+		}
 		try {
-			HttpResponse response = doGet("/", new BasicHeader("Accept", "application/json"));
 			Reader reader = new InputStreamReader(response.getEntity().getContent(), UTF8_CHARSET);
 			DeserializedFile[] items = new Gson().fromJson(reader, DeserializedFile[].class);
 			List<FileDetails> result = new ArrayList<FileDetails>(items.length);
@@ -164,6 +163,10 @@ public class BackupApiCaller extends HttpCaller {
 		}
 	}
 
+	/**
+	 * Returns a string representation of the object, such as
+	 * "BackupApiCaller(accessUrl=" https://Y21:Mj313x@us.restbackup.com/")"
+	 */
 	public String toString() {
 		return "BackupApiCaller(\"" + _accessUrl + "\")";
 	}

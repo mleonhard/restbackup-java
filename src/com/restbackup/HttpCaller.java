@@ -39,6 +39,7 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.params.CoreConnectionPNames;
 import org.apache.http.params.CoreProtocolPNames;
 import org.apache.http.params.HttpParams;
+import org.apache.http.util.EntityUtils;
 
 /**
  * Base class that performs HTTP requests to RestBackup(tm) access-urls with
@@ -209,6 +210,32 @@ public class HttpCaller {
 	}
 
 	/**
+	 * Checks the response object for the expected status code
+	 * 
+	 * @param response
+	 *            the response received from the API
+	 * @param expectedCode
+	 *            the expected status code
+	 * @throws UnauthorizedException
+	 *             if the response is 401 Not Authorized
+	 * @throws RestBackupException
+	 *             if the expected response was not received
+	 */
+	protected void expectStatusCode(HttpResponse response, int expectedCode)
+			throws UnauthorizedException, RestBackupException {
+		int code = response.getStatusLine().getStatusCode();
+		if (code == expectedCode) {
+			return;
+		} else if (200 <= code && code <= 299) { // Success
+			throw new RestBackupException("Unexpected response", response);
+		} else if (code == 401) { // Unauthorized
+			throw new UnauthorizedException(response);
+		} else {
+			throw new RestBackupException(response);
+		}
+	}
+
+	/**
 	 * Performs an HTTP GET request of the specified resource
 	 * 
 	 * @param uri
@@ -272,7 +299,8 @@ public class HttpCaller {
 	 *          "application/x-www-form-urlencoded; charset=UTF-8" and the
 	 *          provided parameters
 	 */
-	protected static HttpEntity makeFormUrlencodedEntity(String[] params) {
+	protected static HttpEntity makeFormUrlencodedEntity(String[] params)
+			throws RestBackupException {
 		if (params.length % 2 == 1) { // odd number of items
 			throw new IllegalArgumentException("Params must have an even number of strings");
 		}
@@ -283,7 +311,7 @@ public class HttpCaller {
 		try {
 			return new UrlEncodedFormEntity(pairList, "UTF-8");
 		} catch (UnsupportedEncodingException e) { // should never happen
-			return null;
+			throw new RestBackupException(e);
 		}
 	}
 
@@ -334,6 +362,35 @@ public class HttpCaller {
 		HttpParams params = httpDelete.getParams();
 		params.setBooleanParameter(CoreConnectionPNames.TCP_NODELAY, true);
 		return executeRequest(httpDelete);
+	}
+
+	/**
+	 * Returns a string representation of the object, such as
+	 * "HttpCaller(accessUrl=" https://Y21:Mj313x@us.restbackup.com/")"
+	 */
+	public String toString() {
+		return String.format("HttpCaller(accessUrl=\"%s\")", _accessUrl);
+	}
+
+	/**
+	 * Reads the response body entity and returns it as a string
+	 * 
+	 * @param response
+	 *            a response object containing the entity to read
+	 * @return a string with the body of the response
+	 * @throws RestBackupException
+	 *             on error
+	 */
+	public static String readEntity(HttpResponse response) throws RestBackupException {
+		HttpEntity entity = response.getEntity();
+		if (entity == null) {
+			throw new RestBackupException("Response contains no body.");
+		}
+		try {
+			return EntityUtils.toString(entity);
+		} catch (Exception e) {
+			throw new RestBackupException("Error reading response body", e, response);
+		}
 	}
 }
 

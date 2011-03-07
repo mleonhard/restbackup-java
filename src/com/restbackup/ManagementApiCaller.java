@@ -17,8 +17,6 @@ import java.util.List;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
-import org.apache.http.util.EntityUtils;
-
 import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 
@@ -92,14 +90,21 @@ public class ManagementApiCaller extends HttpCaller {
 	 *            Does not sleep if this value is less than 1.
 	 * @return an object with the account details. You use this object to
 	 *         construct a BackupApiCaller object tied to the backup account.
+	 * @throws UnauthorizedException
+	 *             if the access-URL is not accepted
 	 * @throws RestBackupException
+	 *             on all other errors
 	 */
 	public BackupAccountDetails createBackupAccount(String description, int retainDays,
-			int delaySeconds) throws RestBackupException {
+			int delaySeconds) throws UnauthorizedException, RestBackupException {
+		String[] postParams = { "description", description, "retaindays",
+				String.valueOf(retainDays) };
+		HttpResponse response = doPost("/", postParams);
+		expectStatusCode(response, 201); // Ok
+		if (response.getEntity() == null) {
+			throw new RestBackupException("Response contains no body", response);
+		}
 		try {
-			String[] postParams = { "description", description, "retaindays",
-					String.valueOf(retainDays) };
-			HttpResponse response = doPost("/", postParams);
 			HttpEntity entity = response.getEntity();
 			InputStream entityStream = entity.getContent();
 			Reader reader = new InputStreamReader(entityStream, UTF8_CHARSET);
@@ -127,14 +132,15 @@ public class ManagementApiCaller extends HttpCaller {
 	 *            "Account for Customer 102917"
 	 * @param retainDays
 	 *            the number of days to keep uploaded files
-	 * @param delaySeconds
-	 *            number of seconds to delay after creating the backup account
 	 * @return an object with the account details. You use this object to
 	 *         construct a BackupApiCaller object tied to the backup account.
+	 * @throws UnauthorizedException
+	 *             if the access-URL is not accepted
 	 * @throws RestBackupException
+	 *             on all other errors
 	 */
 	public BackupAccountDetails createBackupAccount(String description, int retainDays)
-			throws RestBackupException {
+			throws UnauthorizedException, RestBackupException {
 		return createBackupAccount(description, retainDays, NEW_ACCOUNT_DELAY_SECONDS);
 	}
 
@@ -146,11 +152,24 @@ public class ManagementApiCaller extends HttpCaller {
 	 *            "/f1093e71-60d0-41ae-9179-a82bd232a45a"
 	 * @return an object with the account details. You use this object to
 	 *         construct a BackupApiCaller object tied to the backup account.
+	 * @throws ResourceNotFoundException
+	 *             if the account was not found
+	 * @throws UnauthorizedException
+	 *             if the access-URL is not accepted
 	 * @throws RestBackupException
+	 *             on all other errors
 	 */
-	public BackupAccountDetails getBackupAccount(String accountId) throws RestBackupException {
+	public BackupAccountDetails getBackupAccount(String accountId)
+			throws ResourceNotFoundException, UnauthorizedException, RestBackupException {
+		HttpResponse response = doGet(accountId, null);
+		if (response.getStatusLine().getStatusCode() == 404) { // Not Found
+			throw new ResourceNotFoundException(response);
+		}
+		expectStatusCode(response, 200); // Ok
+		if (response.getEntity() == null) {
+			throw new RestBackupException("Response contains no body", response);
+		}
 		try {
-			HttpResponse response = doGet(accountId, null);
 			Reader reader = new InputStreamReader(response.getEntity().getContent(), UTF8_CHARSET);
 			DeserializedAccount account = new Gson().fromJson(reader, DeserializedAccount.class);
 			return new BackupAccountDetails(account.accessUrl, account.account,
@@ -167,15 +186,21 @@ public class ManagementApiCaller extends HttpCaller {
 	 *            the accountId of the account to delete, such as
 	 *            "/f1093e71-60d0-41ae-9179-a82bd232a45a"
 	 * @return the response body
+	 * @throws ResourceNotFoundException
+	 *             if the account was not found
+	 * @throws UnauthorizedException
+	 *             if the access-URL is not accepted
 	 * @throws RestBackupException
+	 *             on all other errors
 	 */
-	public String deleteBackupAccount(String accountId) throws RestBackupException {
-		try {
-			HttpResponse response = doDelete(accountId);
-			return EntityUtils.toString(response.getEntity());
-		} catch (IOException e) {
-			throw new RestBackupException(e);
+	public String deleteBackupAccount(String accountId) throws ResourceNotFoundException,
+			UnauthorizedException, RestBackupException {
+		HttpResponse response = doDelete(accountId);
+		if (response.getStatusLine().getStatusCode() == 404) { // Not Found
+			throw new ResourceNotFoundException(response);
 		}
+		expectStatusCode(response, 200); // Ok
+		return HttpCaller.readEntity(response);
 	}
 
 	/**
@@ -184,12 +209,17 @@ public class ManagementApiCaller extends HttpCaller {
 	 * @return a list of objects representing the backup accounts. Use
 	 *         getBackupAccount() to get full details of an account, including
 	 *         access-URLs.
+	 * @throws UnauthorizedException
+	 *             if the access-URL is not accepted
 	 * @throws RestBackupException
+	 *             on all other errors
 	 * @see #getBackupAccount(String accountId)
 	 */
-	public Collection<BackupAccount> listBackupAccounts() throws RestBackupException {
+	public Collection<BackupAccount> listBackupAccounts() throws UnauthorizedException,
+			RestBackupException {
+		HttpResponse response = doGet("/", null);
+		expectStatusCode(response, 200); // Ok
 		try {
-			HttpResponse response = doGet("/", null);
 			Reader reader = new InputStreamReader(response.getEntity().getContent(), UTF8_CHARSET);
 			DeserializedAccount[] items = new Gson().fromJson(reader, DeserializedAccount[].class);
 			List<BackupAccount> result = new ArrayList<BackupAccount>(items.length);

@@ -36,7 +36,7 @@ public class TestBackupApiCaller {
 	public void testBackupApiCallerStringStringStringInt() {
 		String accessUrl = "https://u:p@h/";
 		BackupAccountDetails accountDetails = new BackupAccountDetails(accessUrl, null, null, -1);
-		BackupApiCaller caller = new BackupApiCaller(accountDetails);
+		BackupApiCaller caller = new BackupApiCaller(accountDetails.getAccessUrl());
 		assertEquals(accessUrl, caller.getAccessUrl());
 	}
 
@@ -72,6 +72,5 @@ public class TestBackupApiCaller {
 		assertEquals(416849, file.getSize());
 		assertEquals(1274526004 * 1000L, file.getCreateTime().getTime());
 		assertEquals(1306062004 * 1000L, file.getDeleteTime().getTime());
-
 	}
 }

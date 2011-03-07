@@ -52,7 +52,7 @@ public class TestManagementApiCaller {
 				String body = "{\r\n\"account\":\"/acct123\",\r\n" + "\"retaindays\":8,\r\n"
 						+ "\"description\":\"A B\",\r\n\"access-url\":\"https://x:y@h:7/\"\r\n"
 						+ "}\r\n";
-				return TestUtils.fakeResponse(200, body);
+				return TestUtils.fakeResponse(201, body);
 			}
 		};
 		Mockito.when(client.execute(Mockito.any(HttpUriRequest.class))).thenAnswer(answer);

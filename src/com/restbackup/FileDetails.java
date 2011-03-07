@@ -60,6 +60,14 @@ public class FileDetails {
 	 */
 	public String toString() {
 		return String.format("FileDetails(uri=\"%s\",size=%d,createTime=%d,deleteTime=%d)", _uri,
-				_size, _createTime, _deleteTime);
+				_size, _createTime.getTime() / 1000L, _deleteTime.getTime() / 1000L);
+	}
+
+	public boolean equals(Object obj) {
+		return obj != null && obj.toString().equals(toString());
+	}
+
+	public int hashCode() {
+		return toString().hashCode();
 	}
 }

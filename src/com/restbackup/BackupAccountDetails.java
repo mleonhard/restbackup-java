@@ -30,4 +30,16 @@ public class BackupAccountDetails extends BackupAccount {
 	public String getAccessUrl() {
 		return _accessUrl;
 	}
+
+	/**
+	 * Returns a string representation of the object, such as
+	 * "BackupAccountDetails(accessUrl="
+	 * https://Y21:Mj313x@us.restbackup.com/",accountId="/72d2e-
+	 * 1dc1-daf2d1785",description="License 42a745b7",retainUploadsDays=180)"
+	 */
+	public String toString() {
+		return String
+				.format("BackupAccountDetails(accessUrl=\"%s\",accountId=\"%s\",description=\"%s\",retainUploadsDays=%d)",
+						_accessUrl, getAccountId(), getDescription(), getRetainUploadsDays());
+	}
 }
