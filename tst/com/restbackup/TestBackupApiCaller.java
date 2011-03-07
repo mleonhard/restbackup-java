@@ -33,14 +33,6 @@ public class TestBackupApiCaller {
 	}
 
 	@Test
-	public void testBackupApiCallerStringStringStringInt() {
-		String accessUrl = "https://u:p@h/";
-		BackupAccountDetails accountDetails = new BackupAccountDetails(accessUrl, null, null, -1);
-		BackupApiCaller caller = new BackupApiCaller(accountDetails.getAccessUrl());
-		assertEquals(accessUrl, caller.getAccessUrl());
-	}
-
-	@Test
 	public void testList() throws ClientProtocolException, IOException {
 		HttpClient client = Mockito.mock(HttpClient.class);
 		Mockito.when(client.getParams()).thenReturn(new BasicHttpParams());

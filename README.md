@@ -2,8 +2,21 @@ RestBackup(tm) Client Library
 =============================
 
 This package provides convenient classes for making calls to the
-RestBackup(tm) Backup and Management APIs.  These APIs are documented
-at http://dev.restbackup.com/developers
+RestBackup(tm) Backup and Management APIs.  These APIs are documented at
+[http://dev.restbackup.com/developers](http://dev.restbackup.com/developers).
+
+Dependencies:
+
+* JavaSE-1.6
+* commons-logging-1.1.1.jar
+* gson-1.6.jar
+* httpclient-4.1.jar
+* httpcore-4.1.jar
+
+Unit Test Dependencies:
+
+* JUnit 4
+* mockito-all-1.8.5.jar
 
 Example usage:
 
