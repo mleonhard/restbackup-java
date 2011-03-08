@@ -8,10 +8,10 @@ RestBackup(tm) Backup and Management APIs.  These APIs are documented at
 Dependencies:
 
 * JavaSE-1.6
-* commons-logging-1.1.1.jar
 * gson-1.6.jar
 * httpclient-4.1.jar
 * httpcore-4.1.jar
+  - commons-logging-1.1.1.jar
 
 Unit Test Dependencies:
 

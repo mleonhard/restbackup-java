@@ -4,6 +4,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.entity.StringEntity;
@@ -13,6 +16,12 @@ public class Example {
 	public static void main(String[] args) {
 		try {
 			System.out.println("Starting");
+
+			// Enable logging
+			for (Handler handler : Logger.getLogger("").getHandlers()) {
+				handler.setLevel(Level.ALL);
+			}
+			Logger.getLogger(HttpCaller.class.getName()).setLevel(Level.ALL);
 
 			// Make a caller object for the management api account
 			// String managementApiAccessUrl =

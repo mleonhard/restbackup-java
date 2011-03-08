@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,6 +28,7 @@ import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpDelete;
+import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
@@ -50,12 +52,18 @@ import org.apache.http.util.EntityUtils;
  */
 public class HttpCaller {
 	public static final String VERSION = "1.0";
-	public static final String HTTP_USER_AGENT = makeHttpUserAgentString();
+	public static final String HTTP_USER_AGENT;
 	public static final int MAX_ATTEMPTS = 5;
 	public static final int FIRST_RETRY_DELAY_SECONDS = 1;
 	protected static final Charset UTF8_CHARSET = Charset.forName("UTF-8");
 	protected static final int CONNECT_TIMEOUT_MS = 60 * 1000;
 	protected static final int SOCKET_BUFFER_SIZE = 128 * 1024;
+
+	private static final Logger _log;
+	static {
+		_log = Logger.getLogger(HttpCaller.class.getName());
+		HTTP_USER_AGENT = makeHttpUserAgentString();
+	}
 
 	protected final HttpClient _httpClient;
 
@@ -104,6 +112,7 @@ public class HttpCaller {
 		String osArch = System.getProperty("os.arch", ""); // x86
 		userAgent = userAgent + " " + osNameNoSpaces + "/" + osVersion + "-" + osArch;
 
+		_log.config("User-Agent: " + userAgent);
 		return userAgent;
 	}
 
@@ -165,6 +174,9 @@ public class HttpCaller {
 			_port = Integer.valueOf(portString);
 		}
 
+		_log.config(String.format("Using access-url %s://%s:***@%s:%d/", _scheme, _username, _host,
+				_port));
+
 		_httpClient = httpClient;
 		HttpParams params = _httpClient.getParams();
 		params.setBooleanParameter(ClientPNames.HANDLE_AUTHENTICATION, false);
@@ -199,9 +211,37 @@ public class HttpCaller {
 	 * @throws RestBackupException
 	 */
 	protected HttpResponse executeRequest(HttpUriRequest request) throws RestBackupException {
+		_log.info("Executing request: " + request.getRequestLine());
+		if (request instanceof HttpEntityEnclosingRequestBase) {
+			HttpEntity entity = ((HttpEntityEnclosingRequestBase) request).getEntity();
+			if (entity.getContentLength() < 0) {
+				_log.fine("Content-Length: unknown");
+			} else {
+				_log.fine(String.format("Content-Length: %d", entity.getContentLength()));
+			}
+			if (entity.getContentType() == null) {
+				_log.fine("Content-Type: unknown");
+			} else {
+				_log.fine(entity.getContentType().toString());
+			}
+		}
 		// TODO: Make sure that retries are performed correctly
 		try {
-			return _httpClient.execute(request);
+			HttpResponse response = _httpClient.execute(request);
+			_log.info("Received response: " + response.getStatusLine());
+			if (response.containsHeader("X-RequestID")) {
+				_log.info(response.getLastHeader("X-RequestID").toString());
+			}
+			if (response.containsHeader("Content-Length")) {
+				_log.fine(response.getLastHeader("Content-Length").toString());
+			}
+			if (response.containsHeader("Content-Type")) {
+				_log.fine(response.getLastHeader("Content-Type").toString());
+			}
+			if (response.containsHeader("Location")) {
+				_log.fine(response.getLastHeader("Location").toString());
+			}
+			return response;
 		} catch (ClientProtocolException e) {
 			throw new RestBackupException(e);
 		} catch (IOException e) {
@@ -227,7 +267,8 @@ public class HttpCaller {
 		if (code == expectedCode) {
 			return;
 		} else if (200 <= code && code <= 299) { // Success
-			throw new RestBackupException("Unexpected response", response);
+			throw new RestBackupException(String.format("Expected status code %d, received %d",
+					expectedCode, code), response);
 		} else if (code == 401) { // Unauthorized
 			throw new UnauthorizedException(response);
 		} else {
@@ -335,6 +376,11 @@ public class HttpCaller {
 		if (postParams != null) {
 			HttpEntity entity = makeFormUrlencodedEntity(postParams);
 			httpPost.setEntity(entity);
+			try {
+				_log.info("Post body: " + EntityUtils.toString(entity));
+			} catch (IOException e) {
+				throw new RestBackupException(e); // should never happen
+			}
 		}
 		HttpParams params = httpPost.getParams();
 		params.setBooleanParameter(CoreProtocolPNames.USE_EXPECT_CONTINUE, false);
