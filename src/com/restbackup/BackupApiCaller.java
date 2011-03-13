@@ -43,7 +43,7 @@ public class BackupApiCaller extends HttpCaller {
 	}
 
 	/**
-	 * Creates a new object for calling the RestBackup(tm) Management API
+	 * Creates a new object for calling the RestBackup(tm) Management API.
 	 * 
 	 * @param accessUrl
 	 *            a string with the form "https://USER:PASS@host/"
@@ -79,16 +79,20 @@ public class BackupApiCaller extends HttpCaller {
 	public String put(String uri, HttpEntity entity) throws ResourceExistsException,
 			UnauthorizedException, RestBackupException {
 		HttpResponse response = doPut(uri, entity);
-		// Method Not Allowed
-		if (response.getStatusLine().getStatusCode() == 405) {
-			throw new ResourceExistsException(response);
+		try { // Method Not Allowed
+			if (response.getStatusLine().getStatusCode() == 405) {
+				throw new ResourceExistsException(response);
+			}
+			expectStatusCode(response, 201); // Created
+			return HttpCaller.readEntity(response);
+		} finally {
+			closeResponseEntityInputStream(response);
 		}
-		expectStatusCode(response, 201); // Created
-		return HttpCaller.readEntity(response);
 	}
 
 	/**
-	 * Retrieves the file at the specified uri
+	 * Retrieves the file at the specified uri. Be sure to call
+	 * entity.getContent().close() to release the http connection.
 	 * 
 	 * @param uri
 	 *            the location of the file to download, such as
@@ -112,10 +116,12 @@ public class BackupApiCaller extends HttpCaller {
 			UnauthorizedException, RestBackupException {
 		HttpResponse response = doGet(uri, null);
 		if (response.getStatusLine().getStatusCode() == 404) { // Not Found
+			closeResponseEntityInputStream(response);
 			throw new ResourceNotFoundException(response);
 		}
 		expectStatusCode(response, 200); // Ok
 		if (response.getEntity() == null) {
+			closeResponseEntityInputStream(response);
 			throw new RestBackupException("Response contains no body", response);
 		}
 		return response.getEntity();
@@ -148,6 +154,7 @@ public class BackupApiCaller extends HttpCaller {
 		HttpResponse response = doGet("/", new BasicHeader("Accept", "application/json"));
 		expectStatusCode(response, 200); // Ok
 		if (response.getEntity() == null) {
+			closeResponseEntityInputStream(response);
 			throw new RestBackupException("Response contains no body", response);
 		}
 		try {
@@ -160,6 +167,8 @@ public class BackupApiCaller extends HttpCaller {
 			return result;
 		} catch (IOException e) {
 			throw new RestBackupException(e);
+		} finally {
+			closeResponseEntityInputStream(response);
 		}
 	}
 
@@ -170,44 +179,4 @@ public class BackupApiCaller extends HttpCaller {
 	public String toString() {
 		return "BackupApiCaller(\"" + _accessUrl + "\")";
 	}
-
-//  def put_encrypted(self, passphrase, name, data):
-//      """Encrypts and uploads the provided data to the backup
-//      account, storing it with the specified name.  Data may be a
-//      byte string or RewindableSizedInputStream object.  Returns a
-//      string containing the response body.
-//      
-//      Uses AES for confidentiality, SHA-256 HMAC for authentication,
-//      and PBKDF2 with 1000 rounds of HMAC-SHA-256 for key
-//      generation.  Raises RestBackupException on error.
-//      """
-//      import chlorocrypt
-//      if not hasattr(data, 'read'):
-//          data = StringReader(data)
-//      encrypted = chlorocrypt.EncryptingReader(data, passphrase)
-//      extra_headers = {
-//          'Content-Length':str(len(encrypted)),
-//          'User-Agent' : HTTP_USER_AGENT + ' chlorocrypt/' + \
-//              chlorocrypt.__version__
-//          }
-//      response = self.call('PUT', name, encrypted, extra_headers)
-//      return response.read()
-//  
-//  def get_encrypted(self, passphrase, name):
-//      """Retrieves the specified file and decrypts it.  Returns a
-//      SizedInputStream object.
-//      
-//      Raises RestBackupException on network error.  Raises
-//      WrongPassphraseException if the provided passphrase is
-//      incorrect.  Raises DataDamagedException if file was corrupted
-//      on the network.  Due to padding, the stream may yield up to 16
-//      bytes less than the value of len(stream).
-//      """
-//      import chlorocrypt
-//      extra_headers = { 'User-Agent' : \
-//                            HTTP_USER_AGENT + ' chlorocrypt/' + chlorocrypt.__version__ }
-//      http_response = self.call('GET', name, extra_headers=extra_headers)
-//      http_reader = HttpResponseReader(http_response)
-//      decrypted = chlorocrypt.DecryptingReader(http_reader, passphrase)
-//      return decrypted
 }

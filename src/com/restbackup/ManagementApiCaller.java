@@ -100,7 +100,7 @@ public class ManagementApiCaller extends HttpCaller {
 		String[] postParams = { "description", description, "retaindays",
 				String.valueOf(retainDays) };
 		HttpResponse response = doPost("/", postParams);
-		expectStatusCode(response, 201); // Ok
+		expectStatusCode(response, 201); // Created
 		if (response.getEntity() == null) {
 			throw new RestBackupException("Response contains no body", response);
 		}
@@ -111,14 +111,17 @@ public class ManagementApiCaller extends HttpCaller {
 			Gson gson = new Gson();
 			DeserializedAccount account = gson.fromJson(reader, DeserializedAccount.class);
 			if (delaySeconds > 0) {
-				Thread.sleep(1000 * delaySeconds);
+				try {
+					Thread.sleep(1000 * delaySeconds);
+				} catch (InterruptedException e) { // should never happen
+				}
 			}
 			return new BackupAccountDetails(account.accessUrl, account.account,
 					account.description, account.retaindays);
 		} catch (IOException e) {
-			throw new RestBackupException(e);
-		} catch (InterruptedException e) {
-			throw new RestBackupException(e);
+			throw new RestBackupException(e, response);
+		} finally {
+			closeResponseEntityInputStream(response);
 		}
 	}
 
@@ -175,7 +178,9 @@ public class ManagementApiCaller extends HttpCaller {
 			return new BackupAccountDetails(account.accessUrl, account.account,
 					account.description, account.retaindays);
 		} catch (IOException e) {
-			throw new RestBackupException(e);
+			throw new RestBackupException(e, response);
+		} finally {
+			closeResponseEntityInputStream(response);
 		}
 	}
 
@@ -196,11 +201,15 @@ public class ManagementApiCaller extends HttpCaller {
 	public String deleteBackupAccount(String accountId) throws ResourceNotFoundException,
 			UnauthorizedException, RestBackupException {
 		HttpResponse response = doDelete(accountId);
-		if (response.getStatusLine().getStatusCode() == 404) { // Not Found
-			throw new ResourceNotFoundException(response);
+		try {
+			if (response.getStatusLine().getStatusCode() == 404) { // Not Found
+				throw new ResourceNotFoundException(response);
+			}
+			expectStatusCode(response, 200); // Ok
+			return HttpCaller.readEntity(response);
+		} finally {
+			closeResponseEntityInputStream(response);
 		}
-		expectStatusCode(response, 200); // Ok
-		return HttpCaller.readEntity(response);
 	}
 
 	/**
@@ -229,6 +238,8 @@ public class ManagementApiCaller extends HttpCaller {
 			return result;
 		} catch (IOException e) {
 			throw new RestBackupException(e);
+		} finally {
+			closeResponseEntityInputStream(response);
 		}
 	}
 

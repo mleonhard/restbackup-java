@@ -120,26 +120,7 @@ public class TestHttpCaller {
 	@Test
 	public void testExecuteRequest_success() throws ClientProtocolException, IOException {
 		HttpCaller caller = new HttpCaller("https://u:p@h/", TestHttpCaller.fakeClient("body"));
-		assertEquals("body", EntityUtils.toString(caller.executeRequest(new HttpGet()).getEntity()));
-	}
-
-	@Test(expected = RestBackupException.class)
-	public void testExecuteRequest_ClientProtocolException() throws ClientProtocolException,
-			IOException {
-		HttpClient client = Mockito.mock(HttpClient.class);
-		Mockito.when(client.getParams()).thenReturn(new BasicHttpParams());
-		Mockito.when(client.execute(Mockito.any(HttpUriRequest.class))).thenThrow(
-				new ClientProtocolException());
-		new HttpCaller("https://u:p@h/", client).executeRequest(new HttpGet());
-	}
-
-	@Test(expected = RestBackupException.class)
-	public void testExecuteRequest_IOException() throws ClientProtocolException, IOException {
-		HttpClient client = Mockito.mock(HttpClient.class);
-		Mockito.when(client.getParams()).thenReturn(new BasicHttpParams());
-		Mockito.when(client.execute(Mockito.any(HttpUriRequest.class)))
-				.thenThrow(new IOException());
-		new HttpCaller("https://u:p@h/", client).executeRequest(new HttpGet());
+		assertEquals("body", EntityUtils.toString(caller.executeRequestWithRetries(new HttpGet()).getEntity()));
 	}
 
 	/* CONSTRUCTOR ************************************************ */

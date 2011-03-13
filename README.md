@@ -10,8 +10,8 @@ Dependencies:
 * JavaSE-1.6
 * gson-1.6.jar
 * httpclient-4.1.jar
-* httpcore-4.1.jar
   - commons-logging-1.1.1.jar
+* httpcore-4.1.jar
 
 Unit Test Dependencies:
 

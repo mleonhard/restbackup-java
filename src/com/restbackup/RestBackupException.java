@@ -20,6 +20,15 @@ public class RestBackupException extends IOException {
 		super(s);
 	}
 
+	public RestBackupException(String s, Throwable t) {
+		super(s, t);
+	}
+
+	public RestBackupException(Throwable t, HttpResponse response) {
+		super(t);
+		_response = response;
+	}
+
 	public RestBackupException(String s, Throwable t, HttpResponse response) {
 		super(s, t);
 		_response = response;
